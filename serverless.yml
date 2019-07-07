@@ -5,7 +5,10 @@ service: s3-simple
 custom: 
     settings:
       DYNAMODB: authors_table
-
+      STREAMNAME: my_first_stream
+package:
+  exclude:
+    - node_modules/**
 provider:
   name: aws
   runtime: nodejs8.10
@@ -17,6 +20,9 @@ provider:
   iamRoleStatements:
     - Effect: "Allow"
       Action: s3:*
+      Resource: "*"
+    - Effect: "Allow"
+      Action: kinesis:*
       Resource: "*"
     - Effect: "Allow"
       Action:
@@ -53,6 +59,10 @@ functions:
       - http:
           path: hello/{name}
           method: get
+  produce:
+    handler: handler.produce
+    events:
+      - schedule: rate(1 minute)
   reads3:
     handler: handler.reads3
     events:
@@ -104,6 +114,11 @@ resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: shouldnotbe
+  NewKinesis:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: ${self:custom.settings.STREAMNAME}
+      ShardCount: 1
   # Resources:
   NewTable:
     Type: AWS::DynamoDB::Table

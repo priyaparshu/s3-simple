@@ -4,6 +4,8 @@ const AWS = require('aws-sdk');
 const s3 = new AWS.S3()
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const Tablename = process.env.DYNAMODB;
+const kinesis = new AWS.Kinesis({ region: "us-east-1" });
+const stream_name = process.env.STREAMNAME;
 
 AWS.config.update({
   region: "us-east-1"
@@ -128,6 +130,36 @@ module.exports.createauthors = function (event, context, callback) {
     console.log('Item added successfully', JSON.stringify(data.Item, null, 2))
     callback(null, response);
   })
-
 }
+module.exports.produce = function (event, context, callback) {
+  for (var i = 0; i < 100; i++) {
+    _writeToKinesis();
+  }
 
+  function _writeToKinesis() {
+    var curTime = new Date().getMilliseconds();
+    var sensor = "sensor-" + Math.floor(Math.random() * 100000);
+    var reading = Math.floor(Math.random() * 1000000)
+
+
+    var record = JSON.stringify({
+      time: curTime,
+      sensor: sensor,
+      reading: reading
+    })
+
+    var recordParams = ({
+      Data: record,
+      PartitionKey: sensor,
+      StreamName: stream_name
+    })
+
+    kinesis.putRecord(recordParams, (err, data) => {
+      if (err) {
+        console.error(err)
+      } else {
+        console.log("successfully sent data to kinesis")
+      }
+    })
+  }
+}
